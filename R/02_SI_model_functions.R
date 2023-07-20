@@ -46,6 +46,10 @@ SI_model <- function(v_time,
   # Transitions
   dS_dt = v_Sg - (v_mu + v_d + v_lambda) * v_S
   dI_dt = v_Ig + (v_lambda * v_S) - (v_mu + v_d) * v_I
+  # dS_dt = v_Sg - v_S
+  # dI_dt = v_Ig + (v_lambda * v_S) - v_I
+
+
 
   # combine results
   return(list(c(dS_dt, dI_dt)))
@@ -67,8 +71,8 @@ get_model_results <- function(model) {
                            func = model, parms = v_parameter)
 
   model_results <- as.data.frame(desolver) %>%
-    mutate(S = rowSums(.[2:82])) %>%
-    mutate(I = rowSums(.[83:163]))
+    mutate(S = rowSums(.[2:81])) %>%
+    mutate(I = rowSums(.[82:161]))
 
   plot <- ggplot() +
     geom_line(data = model_results, aes(x = time, y = S), color = "blue") +
@@ -91,7 +95,7 @@ get_model_results <- function(model) {
 find_steady <- function(initial_state = v_parameter$v_state,
                         params = v_parameter) {
   equil <- rootSolve::runsteady(y=initial_state,
-                                times=c(0,1E8),
+                                times=c(0,500),
                                 func=SI_model,
                                 parms=params)
 

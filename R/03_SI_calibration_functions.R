@@ -1,11 +1,17 @@
+library(scales)
+library(ggplot2)
+library(Matrix)
 
 generate_nloglik <- function(betas, breaks, W, upper = TRUE, inf = v_inf){
   # Create WAIFW matrix
   Beta <- get_transmission_matrix(betas = betas, breaks = breaks, W = W,
                                   upper = upper)
   foi_hat <- Beta %*% inf
-  out <- -sum(dnorm(x = v_prev_vars$foi, mean = foi_hat,
-                    sd = v_prev_vars$foi_sd, log = T))
+  out <- -1 * sum(dnorm(x = foi_hat, mean = v_prev_vars$foi,
+                        sd = v_prev_vars$foi_sd, log = T))
+  # out <- -1 * sum(dgamma(x = foi_hat,
+  #                        shape = (v_prev_vars$foi)^2/(v_prev_vars$foi_sd^2),
+  #                        rate = (v_prev_vars$foi_sd^2)/v_prev_vars$foi, log = T))
   return(out)
 }
 
@@ -14,18 +20,35 @@ estimate_Beta  <- function(n_age_groups, W, i, beta_names = v_beta_names,
                            v_breaks = waifw.breaks, group.names = groups) {
   require(MHadaptive)
   require(texreg)
+  require(Matrix)
 
   ### Run optimization
   waifw_ll   <- optim(par = beta0, fn = generate_nloglik,
                       breaks = v_breaks, W = W,
                       hessian = T,  method = "L-BFGS-B",
-                      lower = rep(0, n_age_groups), upper = rep(20, n_age_groups))
+                      lower = rep(0, n_age_groups), upper = rep(100, n_age_groups))
   beta_llk   <- waifw_ll$value
   v_beta_hat <- as.vector(waifw_ll$par)
+
   ### Check if Hessian is positive definite
-  print(paste0("Is W = ", i, " positive definite? ",
-               MHadaptive::isPositiveDefinite(waifw_ll$hessian)))
-  beta_hat_cov <- solve(waifw_ll$hessian)
+  ### Compute Hessian Numerically
+  m.hess <- waifw_ll$hessian
+
+  ## Check if HESSIAN is Positive Definite; If not, make covariance Positive Definite
+  ## Is Positive Definite?
+  if(MHadaptive::isPositiveDefinite(waifw_ll$hessian)==FALSE){
+    print("Hessian is NOT Positive Definite")
+    m.hess <- Matrix::nearPD(m.hess)$mat
+    m.cov <- solve(m.hess)
+    print("Compute nearest positive definite matrix for COV matrix using `nearPD` function")
+    beta_hat_cov <- as.matrix(Matrix::nearPD(m.cov)$mat)
+  } else{
+    print("Hessian IS Positive Definite")
+    print("No additional adjustment to COV matrix")
+    beta_hat_cov <- solve(waifw_ll$hessian)
+  }
+
+  print(beta_hat_cov)
   ### Plot correlation matrix
   beta_hat_cor <- cov2cor(beta_hat_cov)
 
@@ -141,34 +164,32 @@ v_waifw_structure = list(W1, W2, W3) # , W4
 n_Betas <- length(v_waifw_structure)
 n_age_groups <- length(waifw.breaks) - 1
 
-v_race <- c("Non-Hispanic White", "Non-Hispanic Black", "Other Hispanic",
-            "Mexican-American", "Other")
-v_sex  <- c("Male", "Female")
+v_race <- c("Non-Hispanic White", "Non-Hispanic Black", "Hispanic", "Other")
+
+v_race <- c("Hispanic", "Other")
+v_race <- c("Non-Hispanic Black")
+v_waifw_structure = list(W3)
 
 for(race in v_race) {
   if(race=="Non-Hispanic White") {
     race_text <- "White"
   } else if(race=="Non-Hispanic Black") {
     race_text <- "Black"
-  } else if(race=="Other Hispanic") {
+  } else if(race=="Hispanic") {
     race_text <- "Hispanic"
-  } else if(race=="Mexican-American") {
-    race_text <- "Mexican"
   } else if(race=="Other") {
     race_text <- "Other"
   }
-  for(sex in v_sex) {
     v_demo <- get_demographic_vars(spec_groups = groups,
-                                   Race = race, Sex = sex)
+                                   Race = race)
     v_prev_vars <- get_prevalence_vars(spec_groups = groups,
                                        Race = race,
-                                       Sex = sex)
+                                       birth_cohort = 1960)
     v_inf <- v_prev_vars$prevalence * v_demo$v_age_prop
     tmp <- calibrate_Betas(n_age_groups = n_age_groups,
                            n_Betas = n_Betas,
                            v_waifw_structure = v_waifw_structure)
-    assign(paste0("calibrate", race_text, sex), tmp)
-  }
+    assign(paste0("calibrate", race_text), tmp)
 }
 
 ### Plot calibration
@@ -204,55 +225,188 @@ simple_waifw <- function(w, v_betas) {
                       v_betas[8], v_betas[8], v_betas[8], v_betas[8], v_betas[8], v_betas[8], v_betas[8], v_betas[8]),
                     ncol = 8, byrow = T)
   }
-  rownames(waifw) <- c("0-4", "5-14", "15-24", "25-44", "45-54", "55-64", "65-69", "70-80")
-  colnames(waifw) <-c("0-4", "5-14", "15-24", "25-44", "45-54", "55-64", "65-69", "70-80")
+  rownames(waifw) <- c("1-4", "5-14", "15-24", "25-44", "45-54", "55-64", "65-69", "70-80")
+  colnames(waifw) <-c("1-4", "5-14", "15-24", "25-44", "45-54", "55-64", "65-69", "70-80")
 
   return(waifw)
 }
 
-white_male_waifw_w1 <- simple_waifw(w="W1", v_betas = calibrateWhiteMale[["m_beta_hat"]][1,])
-white_male_waifw_w2 <- simple_waifw(w="W2", v_betas = calibrateWhiteMale[["m_beta_hat"]][2,])
-white_male_waifw_w3 <- simple_waifw(w="W3", v_betas = calibrateWhiteMale[["m_beta_hat"]][3,])
+white_waifw_w1 <- simple_waifw(w="W1", v_betas = calibrateWhite[["m_beta_hat"]][1,])
+white_waifw_w2 <- simple_waifw(w="W2", v_betas = calibrateWhite[["m_beta_hat"]][2,])
+white_waifw_w3 <- simple_waifw(w="W3", v_betas = calibrateWhite[["m_beta_hat"]][3,])
 
-df_white_male <- rbind(as.data.frame(as.table(white_male_waifw_w1)),
-                       as.data.frame(as.table(white_male_waifw_w2)),
-                       as.data.frame(as.table(white_male_waifw_w3))) %>%
+df_white <- rbind(as.data.frame(as.table(white_waifw_w1)),
+                       as.data.frame(as.table(white_waifw_w2)),
+                       as.data.frame(as.table(white_waifw_w3))) %>%
   mutate(w = c(rep("W1", 64), rep("W2", 64), rep("W3", 64))) %>%
-  mutate(race_sex = "White - Males")
+  mutate(race = "NH White")
 
 
-black_male_waifw_w1 <- simple_waifw(w="W1", v_betas = calibrateBlackMale[["m_beta_hat"]][1,])
-black_male_waifw_w2 <- simple_waifw(w="W2", v_betas = calibrateBlackMale[["m_beta_hat"]][2,])
-black_male_waifw_w3 <- simple_waifw(w="W3", v_betas = calibrateBlackMale[["m_beta_hat"]][3,])
+black_waifw_w1 <- simple_waifw(w="W1", v_betas = calibrateBlack[["m_beta_hat"]][1,])
+black_waifw_w2 <- simple_waifw(w="W2", v_betas = calibrateBlack[["m_beta_hat"]][2,])
+black_waifw_w3 <- simple_waifw(w="W3", v_betas = calibrateBlack[["m_beta_hat"]][3,])
 
-df_black_male <- rbind(as.data.frame(as.table(black_male_waifw_w1)),
-                       as.data.frame(as.table(black_male_waifw_w2)),
-                       as.data.frame(as.table(black_male_waifw_w3))) %>%
+df_black <- rbind(as.data.frame(as.table(black_waifw_w1)),
+                       as.data.frame(as.table(black_waifw_w2)),
+                       as.data.frame(as.table(black_waifw_w3))) %>%
   mutate(w = c(rep("W1", 64), rep("W2", 64), rep("W3", 64))) %>%
-  mutate(race_sex = "Black - Males")
+  mutate(race = "NH Black")
 
-hispanic_male_waifw_w1 <- simple_waifw(w="W1", v_betas = calibrateHispanicMale[["m_beta_hat"]][1,])
-hispanic_male_waifw_w2 <- simple_waifw(w="W2", v_betas = calibrateHispanicMale[["m_beta_hat"]][2,])
-hispanic_male_waifw_w3 <- simple_waifw(w="W3", v_betas = calibrateHispanicMale[["m_beta_hat"]][3,])
+hispanic_waifw_w1 <- simple_waifw(w="W1", v_betas = calibrateHispanic[["m_beta_hat"]][1,])
+hispanic_waifw_w2 <- simple_waifw(w="W2", v_betas = calibrateHispanic[["m_beta_hat"]][2,])
+hispanic_waifw_w3 <- simple_waifw(w="W3", v_betas = calibrateHispanic[["m_beta_hat"]][3,])
 
-df_hispanic_male <- rbind(as.data.frame(as.table(hispanic_male_waifw_w1)),
-                       as.data.frame(as.table(hispanic_male_waifw_w2)),
-                       as.data.frame(as.table(hispanic_male_waifw_w3))) %>%
+df_hispanic <- rbind(as.data.frame(as.table(hispanic_waifw_w1)),
+                     as.data.frame(as.table(hispanic_waifw_w2)),
+                     as.data.frame(as.table(hispanic_waifw_w3))) %>%
   mutate(w = c(rep("W1", 64), rep("W2", 64), rep("W3", 64))) %>%
-  mutate(race_sex = "Hispanic - Males")
+  mutate(race = "Hispanic")
 
-df_all_male <- rbind(df_white_male, df_black_male, df_hispanic_male)
+other_waifw_w1 <- simple_waifw(w="W1", v_betas = calibrateOther[["m_beta_hat"]][1,])
+other_waifw_w2 <- simple_waifw(w="W2", v_betas = calibrateOther[["m_beta_hat"]][2,])
+other_waifw_w3 <- simple_waifw(w="W3", v_betas = calibrateOther[["m_beta_hat"]][3,])
 
-plot_all_male <- ggplot(data = df_all_male, aes(x = Var1,
-                                                y = Var2,
-                                                fill = Freq)) +
-  geom_tile() + facet_grid(w~race_sex) +
-  scale_fill_gradientn(name = "Beta Value", trans = "log", oob=squish_infinite,
-                       breaks = c(0.007, 0.018, 0.050, 0.135, 0.368),
+df_other <- rbind(as.data.frame(as.table(other_waifw_w1)),
+                  as.data.frame(as.table(other_waifw_w2)),
+                  as.data.frame(as.table(other_waifw_w3))) %>%
+  mutate(w = c(rep("W1", 64), rep("W2", 64), rep("W3", 64))) %>%
+  mutate(race = "Other")
+
+
+df_all <- rbind(df_white, df_black, df_hispanic, df_other)
+
+plot_all <- ggplot(data = df_all, aes(x = Var1,
+                                      y = Var2,
+                                      fill = Freq)) +
+  geom_tile() + facet_grid(w~race) +
+  scale_fill_gradientn(name = "Beta Value", trans = "log", # oob=squish_infinite,
+                       # breaks = c(0.0025, 0.0498, 1.000),
                        colors = c("white", "#FFF5F0", "#FEE0D2", "#FCBBA1",
                                   "#FC9272", "#FB6A4A", "#EF3B2C", "#CB181D",
                                   "#A50F15", "#67000D")) +
   scale_y_discrete(limits=rev) + scale_x_discrete() + theme_bw() +
-  xlab("Age Group") + ylab("Age Group")
-plot_all_male
+  xlab("Age Group") + ylab("Age Group") +
+  theme(axis.text.x = element_text(size = 8, angle = -45, vjust = 0.2, hjust = 0.4),
+        axis.text.y = element_text(size = 8),
+        axis.title = element_text(size = 14, face = "bold"),
+        strip.text = element_text(size = 14),
+        legend.text = element_text(size = 10),
+        legend.title = element_text(size = 12),
+        legend.key.height = unit(1.5, "cm"))
+plot_all
+
+ggsave(filename = "results/WAIFW_calibration.png",
+       plot = plot_all , width = 10, height = 4)
+
+## Plot FOI
+v_prev_vars_white <- get_prevalence_vars(spec_groups = groups,
+                                         Race = "Non-Hispanic White")
+v_prev_vars_black <- get_prevalence_vars(spec_groups = groups,
+                                         Race = "Non-Hispanic Black")
+v_prev_vars_hisp  <- get_prevalence_vars(spec_groups = groups,
+                                         Race = "Hispanic")
+v_prev_vars_other <- get_prevalence_vars(spec_groups = groups,
+                                         Race = "Other")
+v_demo_white <- get_demographic_vars(spec_groups = groups, Race = "Non-Hispanic White")
+v_demo_black <- get_demographic_vars(spec_groups = groups, Race = "Non-Hispanic Black")
+v_demo_hisp  <- get_demographic_vars(spec_groups = groups, Race = "Hispanic")
+v_demo_other <- get_demographic_vars(spec_groups = groups, Race = "Other")
+
+
+prev_white <- v_prev_vars_white$prevalence * v_demo_white$v_age_prop
+prev_black <- v_prev_vars_black$prevalence * v_demo_black$v_age_prop
+prev_hisp  <- v_prev_vars_hisp$prevalence * v_demo_hisp$v_age_prop
+prev_other <- v_prev_vars_other$prevalence * v_demo_other$v_age_prop
+
+v_model_foi_white <- calibrateWhite[["v_Beta_hat"]][[1]] %*% prev_white
+v_model_foi_black <- calibrateBlack[["v_Beta_hat"]][[1]] %*% prev_black
+v_model_foi_hisp  <- calibrateHispanic[["v_Beta_hat"]][[2]] %*% prev_hisp
+v_model_foi_other <- calibrateOther[["v_Beta_hat"]][[1]] %*% prev_other
+
+df_foi <- as.data.frame(rbind(cbind(v_prev_vars_white$foi,
+                                    v_prev_vars_white$foi_lb,
+                                    v_prev_vars_white$foi_ub,
+                                    rep("NH White", length(groups)),
+                                    groups, v_model_foi_white),
+                              cbind(v_prev_vars_black$foi,
+                                    v_prev_vars_black$foi_lb,
+                                    v_prev_vars_black$foi_ub,
+                                    rep("NH Black", length(groups)),
+                                    groups, v_model_foi_black),
+                              cbind(v_prev_vars_hisp$foi,
+                                    v_prev_vars_hisp$foi_lb,
+                                    v_prev_vars_hisp$foi_ub,
+                                    rep("Hispanic", length(groups)),
+                                    groups, v_model_foi_hisp),
+                              cbind(v_prev_vars_other$foi,
+                                    v_prev_vars_other$foi_lb,
+                                    v_prev_vars_other$foi_ub,
+                                    rep("Other", length(groups)),
+                                    groups, v_model_foi_other)))
+colnames(df_foi) <- c("foi_est", "foi_est_lb", "foi_est_ub","race", "age", "foi_model")
+df_foi$foi_est <- as.numeric(df_foi$foi_est)
+df_foi$foi_est_lb <- as.numeric(df_foi$foi_est_lb)
+df_foi$foi_est_ub <- as.numeric(df_foi$foi_est_ub)
+df_foi$foi_model <- as.numeric(df_foi$foi_model)
+df_foi$age <- as.numeric(df_foi$age)
+df_foi$race2 <- df_foi$race
+
+library(ggsci)
+library(tidyverse)
+str_stack <- function(x) {
+  x %>% str_split("") %>% map(~ .x %>% paste(collapse = "\n"))
+}
+plot_foi_valid <- ggplot(data = df_foi) +
+  facet_wrap(.~race, scales="free") +
+  scale_color_nejm(guide = "none") +
+  scale_fill_nejm(guide = "none") +
+  theme_bw() +
+  geom_line(aes(x = age, y = foi_est, color = race, alpha = "Observed")) +
+  geom_ribbon(aes(x=age, y=foi_est, ymax=foi_est_ub, ymin=foi_est_lb, fill = race), alpha=0.3, color = NA) +
+  geom_point(aes(x=age, y=foi_model, color = race, alpha = "Fitted")) +
+  theme(legend.position = "right",
+        axis.title = element_text(size = 14, face = "bold"),
+        axis.text.x = element_text(size = 10),
+        axis.text.y = element_text(size = 10),
+        legend.text = element_text(size = 11),
+        strip.text = element_text(size = 14)) +
+  xlab("Age") + ylab("FOI") +
+  scale_x_continuous(breaks=c(0, 10, 20, 30, 40, 50, 60, 70, 80)) +
+  scale_alpha_manual(name = NULL,
+                     values = c(1, 1),
+                     breaks = c("Fitted", "Observed"),
+                     guide = guide_legend(override.aes = list(linetype = c(0, 1),
+                                                              shape = c(16, NA),
+                                                              color = "black")))
+plot_foi_valid
+
+ggsave(filename = "results/FOI_validation.png",
+       plot = plot_foi_valid , width = 10, height = 4)
+
+### Generate Latex Table of Results
+all_tex <- list(calibrateHispanic[["v_beta_tex"]][["$W_1$"]][[1]],
+                calibrateHispanic[["v_beta_tex"]][["$W_2$"]][[1]],
+                calibrateHispanic[["v_beta_tex"]][["$W_3$"]][[1]],
+                calibrateBlack[["v_beta_tex"]][["$W_1$"]][[1]],
+                calibrateBlack[["v_beta_tex"]][["$W_2$"]][[1]],
+                calibrateBlack[["v_beta_tex"]][["$W_3$"]][[1]],
+                calibrateWhite[["v_beta_tex"]][["$W_1$"]][[1]],
+                calibrateWhite[["v_beta_tex"]][["$W_2$"]][[1]],
+                calibrateWhite[["v_beta_tex"]][["$W_3$"]][[1]],
+                calibrateOther[["v_beta_tex"]][["$W_1$"]][[1]],
+                calibrateOther[["v_beta_tex"]][["$W_2$"]][[1]],
+                calibrateOther[["v_beta_tex"]][["$W_3$"]][[1]])
+
+waifw.names.hisp <- paste0("Hispanic - ", paste0("$",paste("W", 1:3, sep = "_")), "$")
+waifw.names.black <- paste0("NH Black - ", paste0("$",paste("W", 1:3, sep = "_")), "$")
+waifw.names.white <- paste0("NH White - ", paste0("$",paste("W", 1:3, sep = "_")), "$")
+waifw.names.other <- paste0("Other - ", paste0("$",paste("W", 1:3, sep = "_")), "$")
+waifw.names.all <- c(waifw.names.hisp,
+                        waifw.names.black,
+                        waifw.names.white,
+                        waifw.names.other)
+
+texreg(all_tex, digits = 3, stars = numeric(0), booktabs = T,
+       custom.model.names = waifw.names.all)
+
 
