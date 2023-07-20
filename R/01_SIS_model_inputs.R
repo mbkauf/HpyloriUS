@@ -34,3 +34,4 @@ load_SIS_model_params <- function(waifw, demography_vars, prevalence_vars,
 
   return(v_parameter)
 }
+
