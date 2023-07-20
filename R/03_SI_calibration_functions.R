@@ -30,18 +30,13 @@ estimate_Beta  <- function(n_age_groups, W, i, beta_names = v_beta_names,
   beta_llk   <- waifw_ll$value
   v_beta_hat <- as.vector(waifw_ll$par)
 
-  ### Check if Hessian is positive definite
-  ### Compute Hessian Numerically
-  m.hess <- waifw_ll$hessian
-
   ## Check if HESSIAN is Positive Definite; If not, make covariance Positive Definite
   ## Is Positive Definite?
   if(MHadaptive::isPositiveDefinite(waifw_ll$hessian)==FALSE){
     print("Hessian is NOT Positive Definite")
-    m.hess <- Matrix::nearPD(m.hess)$mat
-    m.cov <- solve(m.hess)
-    print("Compute nearest positive definite matrix for COV matrix using `nearPD` function")
-    beta_hat_cov <- as.matrix(Matrix::nearPD(m.cov)$mat)
+    m.hess <- Matrix::nearPD(waifw_ll$hessian)$mat
+    beta_hat_cov <- solve(m.hess)
+
   } else{
     print("Hessian IS Positive Definite")
     print("No additional adjustment to COV matrix")
