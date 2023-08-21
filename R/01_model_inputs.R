@@ -81,10 +81,10 @@ get_demographic_vars <- function(spec_groups = NULL,
                                           "Other")) {
   ### Check that an appropriate vector of ages were entered --------------------
   if (!is.null(spec_groups)) {
-    ngroups <- length(spec_groups)
+    n_groups <- length(spec_groups)
     if (!is.numeric(spec_groups)) {
       spec_groups <- as.numeric(spec_groups)
-      warning("spec_groups was not entered as a numeric vector, so it was 
+      warning("spec_groups was not entered as a numeric vector, so it was
               converted to a numeric vector. Results may not be correct")
     }
     older_upper_lim <- max(spec_groups)
@@ -119,11 +119,11 @@ get_demographic_vars <- function(spec_groups = NULL,
   v_age <- as.character(spec_groups)
 
   #initialize age_proportions vector
-  v_age_prop <- rep(0, ngroups)
+  v_age_prop <- rep(0, n_groups)
 
   v_d        <- (v_mu + r_pop_growth) / (exp((v_mu + r_pop_growth)) - 1)
   v_d        <- c(v_d[-length(v_d)], 0)
-  names(v_d) <- names(v_age_prop) <- v_age
+  names(v_d) <- names(v_age_prop) <- names(v_mu) <- v_age
 
   ### Calculate proportion of population in each age class ---------------------
   # Using Merck pg. 10
@@ -132,7 +132,7 @@ get_demographic_vars <- function(spec_groups = NULL,
   acc <- 0
   inner_acc <- 1
   # inner product/sum
-  for (rr in 2:ngroups) {
+  for (rr in 2:n_groups) {
     for (jj in 2:rr) {
       inner_acc <- (v_d[v_age[jj - 1]] / (v_d[v_age[jj]] + v_mu[v_age[jj]])) *
         inner_acc
@@ -171,7 +171,7 @@ get_demographic_vars <- function(spec_groups = NULL,
 #'
 #' @examples v_prev_vars <- get_prevalence_vars(spec_groups = groups)
 get_prevalence_vars <- function(data = "df_prev_hp_foi_birth_cohort.csv",
-                                birth_cohort = 1932,
+                                birth_cohort = NULL,
                                 spec_groups = NULL,
                                 race = c("Hispanic",
                                          "NH White",
@@ -186,7 +186,7 @@ get_prevalence_vars <- function(data = "df_prev_hp_foi_birth_cohort.csv",
     n_groups <- length(spec_groups)  #nolint
     if (!is.numeric(spec_groups)) {
       spec_groups <- as.numeric(spec_groups)
-      warning("spec_groups was not entered as a numeric vector, so it was 
+      warning("spec_groups was not entered as a numeric vector, so it was
               converted to a numeric vector. Results may not be correct")
     }
     keep_ages <- c(spec_groups, (max(spec_groups) + 1))  #nolint
@@ -201,11 +201,12 @@ get_prevalence_vars <- function(data = "df_prev_hp_foi_birth_cohort.csv",
   # 3) filter to specified race group
   # 4) get prevalence value [0, 1]
   df_foi_prev <- lazy_dt(df_foi_prev) %>%
-    dplyr::filter(.data$age %in% spec_groups) %>%
-    dplyr::filter(.data$age %in% spec_groups) %>%
-    dplyr::filter(.data$cohort == birth_cohort) %>%
-    dplyr::filter(.data$race == race) %>%
-    dplyr::mutate(.data$prev_value <- .data$prev_value / 100)
+    dplyr::rename(race_eth = race) %>%
+    dplyr::filter(age %in% spec_groups) %>%
+    dplyr::filter(cohort == birth_cohort) %>%
+    dplyr::filter(race_eth == race) %>%
+    dplyr::mutate(prev_value = prev_value / 100) %>%
+    as_tibble()
 
   foi <- as.numeric(df_foi_prev$foi_value)
   foi_sd <- as.numeric(df_foi_prev$SD)
@@ -214,6 +215,7 @@ get_prevalence_vars <- function(data = "df_prev_hp_foi_birth_cohort.csv",
 
   prevalence <- as.numeric(df_foi_prev$prev_value)
   prevalence_sd <- as.numeric(df_foi_prev$SD_prev)
+
   return(list(prevalence = prevalence,
               prevalence_sd = prevalence_sd,
               foi = foi,
@@ -362,7 +364,7 @@ get_ab_vars <- function(spec_groups = NULL,
                                  "NH AAPI",
                                  "NH AIAN",
                                  "Other")) {
-  
+
   # TODO - write antibiotic vars function
 
 }

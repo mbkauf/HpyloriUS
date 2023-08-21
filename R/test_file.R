@@ -15,16 +15,16 @@ q <- 0
 
 ## WAIFW matrix
 beta1 <- get_transmission_matrix(betas = calibrate_white$m_beta_hat[1, ],
-                                 breaks = waifw.breaks,
-                                 W = W1,
+                                 breaks = waifw_breaks,
+                                 w = w1,
                                  group.names = groups)
 beta2 <- get_transmission_matrix(betas = calibrate_white$m_beta_hat[2, ],
-                                 breaks = waifw.breaks,
-                                 W = W2,
+                                 breaks = waifw_breaks,
+                                 w = w2,
                                  group.names = groups)
 beta3 <- get_transmission_matrix(betas = calibrate_white$m_beta_hat[3, ],
-                                 breaks = waifw.breaks,
-                                 W = W3,
+                                 breaks = waifw_breaks,
+                                 w = w3,
                                  group.names = groups)
 
 

@@ -2,7 +2,7 @@ library(scales)
 library(ggplot2)
 library(Matrix)
 
-generate_nloglik <- function(betas, breaks, w, upper = TRUE, inf = v_inf){
+generate_nloglik <- function(betas, breaks, w, upper = TRUE, inf = v_inf) {
   # Create wAIFw matrix
   beta <- get_transmission_matrix(betas = betas, breaks = breaks, w = w, #nolint
                                   upper = upper)
@@ -154,32 +154,48 @@ w3 <- matrix(c(1, 1, 1, 4, 5, 6, 7, 8,
 
 v_waifw_structure <- list(w1, w2, w3) # , w4
 
+## WAIFW parameters
+waifw_breaks      <- c(1, 5, 15, 25, 45, 55, 65, 70, 81)
+beta0             <- c(0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1)
+v_age_group_names <- c("1-4", "5-14", "15-24", "25-44", "45-54", "55-64",
+                       "65-69", "70-80")
+
+## Age groups
+groups <- c(1:80)
+
+## Number of age groups
+n_ages <- length(groups)
+
+## Population growth
+q <- 0
+
 n_betas <- length(v_waifw_structure)
 n_age_groups <- length(waifw_breaks) - 1
 
-v_race <- c("Hispanic", "NH white", "NH Black", "Other")
+v_race <- c("Hispanic", "NH White", "NH Black", "Other")
 
 # v_race <- c("Hispanic", "Other")
 # v_race <- c("Non-Hispanic Black")
 # v_waifw_structure = list(w3)
 
 for (race in v_race) {
-  if (race == "NH white") {
+  if (race == "NH White") {
     race_text <- "white"
   } else if (race == "NH Black") {
     race_text <- "black"
   } else if (race == "Hispanic") {
-    race_text <- "Hispanic"
+    race_text <- "hispanic"
   } else if (race == "Other") {
     race_text <- "other"
   }
+  print(race)
   v_demo <- get_demographic_vars(spec_groups = groups,
                                  race = race)
   v_prev_vars <- get_prevalence_vars(spec_groups = groups,
                                      race = race,
                                      birth_cohort = 1960)
   v_inf <- v_prev_vars$prevalence * v_demo$v_age_prop
-  tmp <- calibrate_Betas(n_age_groups = n_age_groups,
+  tmp <- calibrate_betas(n_age_groups = n_age_groups,
                          n_betas = n_betas,
                          v_waifw_structure = v_waifw_structure)
   assign(paste0("calibrate_", race_text), tmp)
