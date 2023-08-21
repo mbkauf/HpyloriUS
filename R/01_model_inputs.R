@@ -30,7 +30,7 @@ get_transmission_matrix <- function(betas, breaks, w, upper = TRUE,
   if (n_params != 8) {
     stop("Number of beta parameters is different than 8")
   }
-  if (max(w) > n_params ) {
+  if (max(w) > n_params) {
     betas <- c(betas, 0)
   }
   ## Complete index matrix from upper triangular index matrix
@@ -183,13 +183,13 @@ get_prevalence_vars <- function(data = "df_prev_hp_foi_birth_cohort.csv",
   require(dplyr)
   ### Check that an appropriate vector of ages were entered --------------------
   if (!is.null(spec_groups)) {
-    n_groups <- length(spec_groups)
+    n_groups <- length(spec_groups)  #nolint
     if (!is.numeric(spec_groups)) {
       spec_groups <- as.numeric(spec_groups)
       warning("spec_groups was not entered as a numeric vector, so it was 
               converted to a numeric vector. Results may not be correct")
     }
-    keep_ages <- c(spec_groups, (max(spec_groups) + 1))
+    keep_ages <- c(spec_groups, (max(spec_groups) + 1))  #nolint
   }
 
   ### Load prevalence/foi dataset ----------------------------------------------
