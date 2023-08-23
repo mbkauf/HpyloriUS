@@ -17,15 +17,15 @@ q <- 0
 beta1 <- get_transmission_matrix(betas = calibrate_white$m_beta_hat[1, ],
                                  breaks = waifw_breaks,
                                  w = w1,
-                                 group.names = groups)
+                                 group_names = groups)
 beta2 <- get_transmission_matrix(betas = calibrate_white$m_beta_hat[2, ],
                                  breaks = waifw_breaks,
                                  w = w2,
-                                 group.names = groups)
+                                 group_names = groups)
 beta3 <- get_transmission_matrix(betas = calibrate_white$m_beta_hat[3, ],
                                  breaks = waifw_breaks,
                                  w = w3,
-                                 group.names = groups)
+                                 group_names = groups)
 
 
 
@@ -33,6 +33,7 @@ beta3 <- get_transmission_matrix(betas = calibrate_white$m_beta_hat[3, ],
 v_demo <- get_demographic_vars(spec_groups = groups,
                                race = "NH White")
 v_prev_vars <- get_prevalence_vars(spec_groups = groups,
+                                   birth_cohort = 1980,
                                    race = "NH White")
 
 v_parameter <- load_si_model_params(waifw = beta1, demography_vars = v_demo,
@@ -52,9 +53,10 @@ model_results_si_3 <- get_model_results(si_model)
 
 ## SIS model with betas from WAIFW structure 3
 v_demo <- get_demographic_vars(spec_groups = groups,
-                               Race = "NH White")
+                               race = "NH White")
 v_prev_vars <- get_prevalence_vars(spec_groups = groups,
-                                   Race = "NH White")
+                                   birth_cohort = 1980,
+                                   race = "NH White")
 v_parameter <- load_sis_model_params(waifw = beta3, demography_vars = v_demo,
                                      prevalence_vars = v_prev_vars,
                                      ages = groups)

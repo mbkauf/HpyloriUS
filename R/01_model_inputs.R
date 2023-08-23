@@ -300,15 +300,15 @@ load_sis_model_params <- function(waifw, demography_vars, prevalence_vars,
     m_waifw            = waifw,                # transmission rates
     v_state            = v_init,               # list of initial state values
     v_names_age_groups = as.character(ages),   # ages as character vector
-    n_id_states        = length(c("S0", "I0", "I1", "S1")),  # number of states
-    v_names_id_states  = c("S0", "I0", "I1", "S1"), # character vector of states
+    n_id_states        = length(c("S0", "I0", "S1", "I1")),  # number of states
+    v_names_id_states  = c("S0", "I0", "S1", "I1"), # character vector of states
     n_age_groups       = length(ages),         # number of age groups
     p_test             = 0, # probability of testing infected
     test_sens          = 0, # test sensitivity
     trt_eff            = 0.9, # probability of treatment working
-    gamma              = 0, # 1/(14/365), # 1 / treatment length
-    p_trtS             = 0, # probability of treatment when susceptible
-    p_trtI             = 0  # probability of treatment when infected
+    gamma              = 1/(14/365), # 1 / treatment length
+    p_trt_s            = 0.1, # probability of treatment when susceptible
+    p_trt_i            = 0.1  # probability of treatment when infected
   )
 
   return(v_parameter)

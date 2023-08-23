@@ -78,8 +78,8 @@ sis_model <- function(v_time,
   v_mu               <- v_params$v_mu
   trt_eff            <- v_params$trt_eff    # probability of treatment working
   gamma              <- v_params$gamma
-  p_trt_s             <- v_params$p_trt_s
-  p_trt_i             <- v_params$p_trt_i
+  p_trt_s            <- v_params$p_trt_s
+  p_trt_i            <- v_params$p_trt_i
 
   # One-time intervention
   # p_trtS <- ifelse(
@@ -106,8 +106,6 @@ sis_model <- function(v_time,
   # Force of infection lambda values
   v_lambda       <- m_waifw %*% (v_i0 + v_i1)
   # v_lambda_prime <- m_waifw %*% (v_i0 + v_i1)
-  # FIXME - figure out what to do with model not working
-  # TODO - test forced non-negative growth rate and lambda
 
   # Growth rates (Birth rate and aging rate)
   v_s0g <- c(b, (v_d * v_s0)[-n_age_groups])
@@ -233,15 +231,20 @@ get_sis_model_results <- function(n_ages = length(groups)) {
                            method = "ode45")
   desolver2 <- as.data.frame(desolver)
 
+  v_col_names <- c("time", paste0("s0_", v_parameter$v_names_age_groups),
+                   paste0("i0_", v_parameter$v_names_age_groups),
+                   paste0("s1_", v_parameter$v_names_age_groups),
+                   paste0("i1_", v_parameter$v_names_age_groups))
+  colnames(desolver2) <- v_col_names
+
   model_results <- lazy_dt(desolver2) %>%
-    group_by(time) %>%
-    mutate(S0 = sum(across(1:as.numeric(n_ages)))) %>%
-    mutate(I0 = sum(across(as.numeric(n_ages + 1):
-                             as.numeric(2 * n_ages)))) %>%
-    mutate(S1 = sum(across(as.numeric(2 * n_ages + 1):
-                             as.numeric(3 * n_ages)))) %>%
-    mutate(I1 = sum(across(as.numeric(3 * n_ages + 1):
-                             as.numeric(4 * n_ages)))) %>%
+    dplyr::mutate(
+      s0 = dplyr::select(., starts_with('s0')) %>% rowSums(),
+      i0 = dplyr::select(., starts_with('i0')) %>% rowSums(),
+      s1 = dplyr::select(., starts_with('s1')) %>% rowSums(),
+      i1 = dplyr::select(., starts_with('i1')) %>% rowSums(),
+    ) %>%
+    dplyr::mutate(all = rowSums(dplyr::select(.,s0:i1))) %>%
     as_tibble()
 
   return(model_results)
@@ -262,18 +265,18 @@ get_model_results <- function(model) {
                              times = v_parameter$v_time,
                              func = model, parms = v_parameter)
 
-  model_results <- as.data.frame(desolver) %>%
-    mutate(S = rowSums(.data[2:81])) %>%
-    mutate(I = rowSums(.data[82:161]))
+  model_results <- as.data.frame(desolver) # %>%
+    # mutate(S = rowSums(.data[2:81])) %>%
+    # mutate(I = rowSums(.data[82:161]))
 
-  plot <- ggplot() +
-    geom_line(data = model_results, aes(x = .data$time, y = .data$S),
-              color = "blue") +
-    geom_line(data = model_results, aes(x = .data$time, y = .data$I),
-              color = "red") +
-    ylab("Proportion")
+  # plot <- ggplot() +
+  #   geom_line(data = model_results, aes(x = .data$time, y = .data$S),
+  #             color = "blue") +
+  #   geom_line(data = model_results, aes(x = .data$time, y = .data$I),
+  #             color = "red") +
+  #   ylab("Proportion")
 
-  return(list(plot, model_results))
+  return(model_results)
 }
 
 
