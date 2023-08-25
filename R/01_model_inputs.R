@@ -34,7 +34,7 @@ get_transmission_matrix <- function(betas, breaks, w, upper = TRUE,
     betas <- c(betas, 0)
   }
   ## Complete index matrix from upper triangular index matrix
-  complete_index <- function(index_upper){
+  complete_index <- function(index_upper) {
     index <- index_upper + t(index_upper)
     diag(index) <- diag(index_upper)
     return(index)
@@ -202,18 +202,18 @@ get_prevalence_vars <- function(data = "df_prev_hp_foi_birth_cohort.csv",
   # 4) get prevalence value [0, 1]
   df_foi_prev <- lazy_dt(df_foi_prev) %>%
     dplyr::rename(race_eth = race) %>%
-    dplyr::filter(age %in% spec_groups) %>%
-    dplyr::filter(cohort == birth_cohort) %>%
-    dplyr::filter(race_eth == race) %>%
-    dplyr::mutate(prev_value = prev_value / 100) %>%
+    dplyr::filter(.data$age %in% spec_groups) %>%
+    dplyr::filter(.data$cohort == birth_cohort) %>%
+    dplyr::filter(.data$race_eth == race) %>%
+    dplyr::mutate(prev_value = .data$prev_value / 100) %>%
     as_tibble()
 
-  foi <- as.numeric(df_foi_prev$foi_value)
+  foi    <- as.numeric(df_foi_prev$foi_value)
   foi_sd <- as.numeric(df_foi_prev$SD)
   foi_lb <- as.numeric(df_foi_prev$LB)
   foi_ub <- as.numeric(df_foi_prev$UB)
 
-  prevalence <- as.numeric(df_foi_prev$prev_value)
+  prevalence    <- as.numeric(df_foi_prev$prev_value)
   prevalence_sd <- as.numeric(df_foi_prev$SD_prev)
 
   return(list(prevalence = prevalence,
@@ -280,7 +280,7 @@ load_si_model_params <- function(waifw, demography_vars,
 #'                                                prevalence_vars = v_prev_vars,
 #'                                                ages = groups)
 load_sis_model_params <- function(waifw, demography_vars, prevalence_vars,
-                                  ages) {
+                                  ages, trt_year = 1) {
 
   ## Get initial state
   # Susceptibles
@@ -306,9 +306,10 @@ load_sis_model_params <- function(waifw, demography_vars, prevalence_vars,
     p_test             = 0, # probability of testing infected
     test_sens          = 0, # test sensitivity
     trt_eff            = 0.9, # probability of treatment working
-    gamma              = 1/(14/365), # 1 / treatment length
+    gamma              = 1 / (14 / 365), # 1 / treatment length
     p_trt_s            = 0.1, # probability of treatment when susceptible
-    p_trt_i            = 0.1  # probability of treatment when infected
+    p_trt_i            = 0.1, # probability of treatment when infected
+    trt_year           = trt_year  # year of treatment
   )
 
   return(v_parameter)
@@ -343,11 +344,7 @@ load_sis_abr_model_params <- function(waifw, waifw_prime, waifw_xi,
     v_mu               = demography_vars$v_mu, # death rates
     # transmission rates (sensitive strains)
     m_waifw            = waifw,
-    # transmission rates (resitant strains)
-    m_waifw_prime      = waifw_prime,
-    # transmission rates (plasmid transfer)
     gamma              = 1 / (14 / 365),       # 1 / treatment length (14 days)
-    m_waifw_xi         = waifw_xi,
     v_alpha            = ab_vars$v_alpha,      # background antibiotic use
     v_psi              = rep(0, n_age_groups), # assume no antibiotic policy
     # probability treatment induces sensitive strains

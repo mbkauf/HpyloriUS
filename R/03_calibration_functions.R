@@ -22,6 +22,7 @@ estimate_beta  <- function(n_age_groups, w, i, beta_names = v_beta_names,  #noli
   ### Run optimization
   waifw_ll   <- optim(par = beta0, fn = generate_nloglik,
                       breaks = v_breaks, w = w,
+                      inf = v_inf,
                       hessian = TRUE,  method = "L-BFGS-B",
                       lower = rep(0, n_age_groups),
                       upper = rep(100, n_age_groups))
@@ -174,10 +175,6 @@ n_age_groups <- length(waifw_breaks) - 1
 
 v_race <- c("Hispanic", "NH White", "NH Black", "Other")
 
-# v_race <- c("Hispanic", "Other")
-# v_race <- c("Non-Hispanic Black")
-# v_waifw_structure = list(w3)
-
 for (race in v_race) {
   if (race == "NH White") {
     race_text <- "white"
@@ -203,7 +200,7 @@ for (race in v_race) {
 
 ### Plot calibration
 simple_waifw <- function(w, v_betas) {
-  if(w == "w1"){
+  if (w == "w1") {
     waifw <- matrix(c(v_betas[1], 0, 0, 0, 0, 0, 0, 0,
                       0, v_betas[2], 0, 0, 0, 0, 0, 0,
                       0, 0, v_betas[3], 0, 0, 0, 0, 0,
@@ -322,7 +319,7 @@ plot_all <- ggplot(data = df_all, aes(x = Var1,
                                       fill = Freq)) +
   geom_tile() + facet_grid(w ~ race) +
   scale_fill_gradientn(name = "Beta Value", trans = "log",
-                       # breaks = c(0.0025, 0.0498, 1.000),
+                       # breaks = c(0.0025, 0.0498, 1.000),  # nolint
                        colors = c("white", "#FFF5F0", "#FEE0D2", "#FCBBA1",
                                   "#FC9272", "#FB6A4A", "#EF3B2C", "#CB181D",
                                   "#A50F15", "#67000D")) +
@@ -387,7 +384,7 @@ df_foi <- as.data.frame(rbind(cbind(v_prev_vars_white$foi,
                                     rep("Other", length(groups)),
                                     groups, v_model_foi_other)))
 
-colnames(df_foi) <- c("foi_est", "foi_est_lb", "foi_est_ub","race",
+colnames(df_foi) <- c("foi_est", "foi_est_lb", "foi_est_ub", "race",
                       "age", "foi_model")
 
 df_foi$foi_est <- as.numeric(df_foi$foi_est)
@@ -413,7 +410,7 @@ plot_foi_valid <- ggplot(data = df_foi) +
   geom_line(aes(x = age, y = foi_est, color = race, alpha = "Observed")) +
   geom_ribbon(aes(x = age, y = foi_est, ymax = foi_est_ub,
                   ymin = foi_est_lb, fill = race),
-              alpha=0.3, color = NA) +
+              alpha = 0.3, color = NA) +
   geom_point(aes(x = age, y = foi_model, color = race, alpha = "Fitted")) +
   theme(legend.position = "right",
         axis.title = element_text(size = 14, face = "bold"),
