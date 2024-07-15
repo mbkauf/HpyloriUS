@@ -1,0 +1,29 @@
+"x"
+"1" "
+\usepackage{booktabs}
+
+\begin{table}
+\begin{center}
+\begin{tabular}{l c}
+\toprule
+ & DEoptim \\
+\midrule
+$\alpha_{11}$ & $0.6600 \; (0.1625)$ \\
+$\alpha_{22}$ & $0.5798 \; (0.0620)$ \\
+$\alpha_{33}$ & $0.6710 \; (0.1085)$ \\
+$\alpha_{44}$ & $0.6610 \; (0.1158)$ \\
+$\alpha_{12}$ & $0.5099 \; (0.0742)$ \\
+$\alpha_{13}$ & $0.2990 \; (0.2395)$ \\
+$\alpha_{14}$ & $0.3490 \; (0.2041)$ \\
+$\alpha_{23}$ & $0.3880 \; (0.0681)$ \\
+$\alpha_{24}$ & $0.4088 \; (0.0717)$ \\
+$\alpha_{34}$ & $0.1570 \; (0.0923)$ \\
+\midrule
+NLL           & $-1796.2929$         \\
+\bottomrule
+\end{tabular}
+\caption{Statistical models}
+\label{table:coefficients}
+\end{center}
+\end{table}
+"
