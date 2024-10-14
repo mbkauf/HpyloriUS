@@ -628,55 +628,76 @@ df_foi_w2          <- fread(file = "results/paper/df_policy_foi_w2.csv")
 df_all_long_w2     <- fread(file = "results/paper/df_policy_long_w2.csv")
 
 # FOI Figures
-plot_hexamap_foi <- function(df_foi_long, w) {
+plot_hexamap_foi <- function(l_df_foi, w) {
   # Output: Hexamap for each race/ethnicity
-  colnames(df_foi_long) <- c(paste0(c(rep("hisp", 80),
-                                      rep("white", 80),
-                                      rep("black", 80),
-                                      rep("other", 80)), "_", rep(1:80, 4)),
-                             "time", "scen", "id")
-  df_foi_long <- df_foi_long %>%
-    gather(age_race, foi, hisp_1:other_80)
+  v_scen <- unique(l_df_foi$hisp$scen)
+  v_scen_text <- c("A", "B", "C", "D", "E")
 
-  df_foi_long[c("race", "age")] <- str_split_fixed(df_foi_long$age_race, "_", 2)
-  df_foi_long$period <- df_foi_long$time + 2024
-  df_foi_long$age <- as.numeric(df_foi_long$age)
-  df_foi_long$foi <- df_foi_long$foi * 0.05  # delete after policy is rerun
-
-  l_df_foi <- split(df_foi_long, df_foi_long$race)
-  v_scen <- unique(df_foi_long$scen)
-  # y_max <- max(df_foi_long$foi)
-
-
-  # for (i in 1:length(v_scen)) {
-  #   data_tmp <- l_df_foi$hisp %>% filter(scen == v_scen[i])
-  #   par(mar = c(2, 2, 1, 1))
-  #   # pdf(paste0("results/paper/plot_", race, "_foi_", i, "_", w, ".pdf"))
-  #   plot_APChexamap(dat = data_tmp, y_var = "foi")
-  # }
   for (race in c("hisp", "white", "black", "other")) {
     if (race == "hisp") {
-      data <- l_df_foi$hisp
+      data      <- l_df_foi$hisp
       l_df_scen <- split(data, data$scen)
+      foi_max   <- quantile(data$foi, 0.99)
+      foi_min   <- min(data$foi)
     } else if (race == "white") {
-      data <- l_df_foi$white
+      data      <- l_df_foi$white
       l_df_scen <- split(data, data$scen)
+      foi_max   <- quantile(data$foi, 0.99)
+      foi_min   <- min(data$foi)
     } else if (race == "black") {
-      data <- l_df_foi$black
+      data      <- l_df_foi$black
       l_df_scen <- split(data, data$scen)
+      foi_max   <- quantile(data$foi, 0.99)
+      foi_min   <- min(data$foi)
     } else if (race == "other") {
-      data <- l_df_foi$other
+      data      <- l_df_foi$other
       l_df_scen <- split(data, data$scen)
+      foi_max   <- quantile(data$foi, 0.99)
+      foi_min   <- min(data$foi)
     }
-    pdf(paste0("results/paper/hexamap_", race, "_foi_", w, ".pdf"))
-    # m <- matrix(c(1, 2, 3,
-    #               4, 5, 6), nrow = 2, ncol = 3, byrow = TRUE)
-    # layout(mat = m, heights = c(0.5, 0.5))
-    par(mfrow = c(1,5))
+    # create the colorbar
+    color_palette <- grDevices::colorRampPalette(c("dodgerblue4", gray(0.95), "firebrick3"))
+    color_vec     <- color_palette(100)
+    color_seq <- seq(from = foi_min, to = foi_max, length.out = length(color_vec) + 1)
+
+    png(
+      paste0("results/paper/hexamap_", race, "_foi_", w, ".png"),
+      width     = 6,
+      height    = 6,
+      units     = "in",
+      res       = 1200,
+      pointsize = 10
+    )
+
+    # par(mfrow = c(3, 2))
+    layout(mat = matrix(c(1, 2, 3,
+                          4, 5, 6), nrow = 2, ncol = 3, byrow = TRUE),
+           heights = c(3, 3),
+           widths = c(2, 2))
     for (i in 1:length(v_scen)) {
-      plot_APChexamap(dat = l_df_scen[[i]], y_var = "foi")
-      # title(main = paste0("Policy ", i))
+      # tiff(paste0("results/paper/hexamap_", race, "_foi_", w, "_", i, ".tiff"))
+
+      plot_hexamap(dat = l_df_scen[[i]], y_var = "foi", legend_title = "FOI",
+                      color_range = c(foi_min, foi_max))
+      mtext(v_scen_text[i], side = 3, adj=0, line=-1.25)
+      dev.list()
     }
+
+    # png(
+    #   paste0("results/paper/hexamap_color_", race, "_foi_", w, ".png"),
+    #   width     = 3.25,
+    #   height    = 3.25,
+    #   units     = "in",
+    #   res       = 1200,
+    #   pointsize = 4
+    # )
+    par(las = 2)
+    par(mar = c(0.5,2,0.5,2))
+    # dev.list()
+    image(y = color_seq, z = t(color_seq), breaks = color_seq, col = color_vec,
+          axes = FALSE, main = "FOI", cex.main = .8)
+    axis(4, cex.axis = 0.5, mgp = c(0,.5,0))
+    dev.list()
     dev.off()
   }
 }
@@ -692,27 +713,28 @@ df_foi_long <- df_foi_w1 %>%
 df_foi_long[c("race", "age")] <- str_split_fixed(df_foi_long$age_race, "_", 2)
 df_foi_long$period <- df_foi_long$time + 2024
 df_foi_long$age <- as.numeric(df_foi_long$age)
-df_foi_long$foi <- df_foi_long$foi * 0.05  # delete after policy is rerun
+# df_foi_long$foi <- df_foi_long$foi * 0.05  # delete after policy is rerun
 
 l_df_foi_w1 <- split(df_foi_long, df_foi_long$race)
-l_df_scen <- split(l_df_foi_w1$hisp, l_df_foi_w1$hisp$scen)
-# png(paste0("results/paper/hexamap_hisp_foi_w1.png"))
-m <- matrix(c(1, 2, 3,
-              4, 5, 6), nrow = 2, ncol = 3, byrow = TRUE)
-layout(mat = m, heights = c(0.5, 0.5))
-plot_APChexamap(dat = l_df_scen[[1]], y_var = "foi")
-frame()
-vps <- baseViewports()
-pushViewport(vps$inner, vps$figure, vps$plot)
-plot_APChexamap(dat = l_df_scen[[2]], y_var = "foi")
-popViewport(3)
-plot_APChexamap(dat = l_df_scen[[3]], y_var = "foi")
-plot_APChexamap(dat = l_df_scen[[4]], y_var = "foi")
-plot_APChexamap(dat = l_df_scen[[5]], y_var = "foi")
-dev.off()
 
-plot_hexamap_foi(df_foi_w1, "w1")
-plot_hexamap_foi(df_foi_w2, "w2")
+plot_hexamap_foi(l_df_foi_w1, "w1")
+
+colnames(df_foi_w2) <- c(paste0(c(rep("hisp", 80),
+                                  rep("white", 80),
+                                  rep("black", 80),
+                                  rep("other", 80)), "_", rep(1:80, 4)),
+                         "time", "scen", "id")
+df_foi_long <- df_foi_w2 %>%
+  gather(age_race, foi, hisp_1:other_80)
+
+df_foi_long[c("race", "age")] <- str_split_fixed(df_foi_long$age_race, "_", 2)
+df_foi_long$period <- df_foi_long$time + 2024
+df_foi_long$age <- as.numeric(df_foi_long$age)
+# df_foi_long$foi <- df_foi_long$foi * 0.05  # delete after policy is rerun
+
+l_df_foi_w2 <- split(df_foi_long, df_foi_long$race)
+
+plot_hexamap_foi(l_df_foi_w2, "w2")
 
 library(ggplot2)
 library(ggsci)
@@ -1315,3 +1337,112 @@ graph_strain_ratio <- function(df_all) {
 }
 pct_treatment_res_plot <- graph_strain_ratio(df_all_long_w1)
 ggsave("results/paper/pct_res_plot_w1.png", pct_treatment_res_plot, height = 8, width = 12)
+
+pct_treatment_res_plot_w2 <- graph_strain_ratio(df_all_long_w2)
+ggsave("results/paper/pct_res_plot_w2.png", pct_treatment_res_plot_w2, height = 8, width = 12)
+
+
+pct_impact <- function(df_all) {
+  require(ggplot2)
+  require(dplyr)
+  require(ggsci)
+
+  df_all <- df_all %>%
+    filter(time == 0 | time == 50)
+
+  df_wide_I <- df_all %>%
+    select(c(time, scenario, waifw, race, id, I)) %>%
+    mutate(I = ifelse(race == "Hispanic", I / (608.095 / 3297.255),
+                      ifelse(race == "NH White", I / (1960.185 / 3297.255),
+                             ifelse(race == "NH Black", I / (402.225 / 3297.255),
+                                    I / (326.750 / 3297.255))))) %>%
+    pivot_wider(names_from = c(time, scenario),
+                values_from = I)
+
+  df_wide_Ir <- df_all %>%
+    select(c(time, scenario, waifw, race, id, Ir)) %>%
+    mutate(Ir = ifelse(race == "Hispanic", Ir / (608.095 / 3297.255),
+                       ifelse(race == "NH White", Ir / (1960.185 / 3297.255),
+                              ifelse(race == "NH Black", Ir / (402.225 / 3297.255),
+                                     Ir / (326.750 / 3297.255))))) %>%
+    pivot_wider(names_from = c(time, scenario),
+                values_from = Ir)
+
+  df_wide_Iw <- df_all %>%
+    select(c(time, scenario, waifw, race, id, Iw)) %>%
+    mutate(Iw = ifelse(race == "Hispanic", Iw / (608.095 / 3297.255),
+                       ifelse(race == "NH White", Iw / (1960.185 / 3297.255),
+                              ifelse(race == "NH Black", Iw / (402.225 / 3297.255),
+                                     Iw / (326.750 / 3297.255))))) %>%
+    pivot_wider(names_from = c(time, scenario),
+                values_from = Iw)
+
+  df_wide_I$strain  <- "All Strains"
+  df_wide_Ir$strain <- "Treatment Resistant"
+  df_wide_Iw$strain <- "Treatment Sensitive"
+
+  df_wide <- rbind(df_wide_I, df_wide_Ir, df_wide_Iw)
+
+  colnames(df_wide) <- c("waifw", "race", "id", "t_0_sq",
+                         "t_50_sq", "t_0_p1", "t_50_p1",
+                         "t_0_p2", "t_50_p2",
+                         "t_0_p3", "t_50_p3",
+                         "t_0_p4", "t_50_p4", "strain")
+
+  df_wide <- df_wide %>%
+    dplyr::mutate(net_diff_p1 = (t_50_p1 - t_50_sq)) %>%
+    dplyr::mutate(net_diff_p2 = (t_50_p2 - t_50_sq)) %>%
+    dplyr::mutate(net_diff_p3 = (t_50_p3 - t_50_sq)) %>%
+    dplyr::mutate(net_diff_p4 = (t_50_p4 - t_50_sq))
+
+  df_long <- df_wide %>%
+    pivot_longer(cols = starts_with("net_diff"),
+                 names_to = "policy",
+                 names_prefix = "policy_",
+                 values_to = "net_diff")
+  df_long <- df_long %>%
+    dplyr::mutate(policy = ifelse(policy == "net_diff_p1", 1,
+                                  ifelse(policy == "net_diff_p2", 2,
+                                         ifelse(policy == "net_diff_p3", 3, 4)))) %>%
+    dplyr::mutate(policy = factor(policy, levels = c(1,2,3,4),
+                                  labels = c("18+",
+                                             "Targeted 18+",
+                                             "40+",
+                                             "Targeted 40+")))
+
+  plot1 <- ggplot(data = df_long, aes(x = waifw, y = net_diff, fill = policy)) +
+    geom_boxplot() +
+    geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+    facet_grid(strain ~ race,
+               labeller = labeller(race = label_wrap_gen(21))) +
+    scale_fill_nejm() +
+    theme_bw() +
+    xlab("Mixing Pattern") + ylab("Net Change in Prevalence (%)") +
+    scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+    scale_x_discrete(labels = function(x) stringr::str_wrap(x, width = 7)) +
+    guides(fill = guide_legend(title = "Policy")) +
+    theme(strip.text = element_text(size = 15),
+          axis.text.x = element_text(size = 12),
+          axis.text.y = element_text(size = 12),
+          axis.title.x = element_text(size = 16),
+          axis.title.y = element_text(size = 16),
+          title = element_text(size = 18, face = "bold"),
+          legend.title = element_text(size = 14),
+          legend.text = element_text(size = 12),
+          legend.position = "bottom")
+  plot1 <- plot1 + ggtitle("Impact of Test and Treat Policies by Year 50")
+
+  return(plot1)
+}
+
+df_all_long_w1$waifw     <- "W1"
+df_all_long_w2$waifw     <- "W2"
+
+scenario_results_all <- as.data.frame(rbind(df_all_long_w1,
+                                            df_all_long_w2))
+
+pct_plots <- pct_impact(scenario_results_all)
+pct_plots
+
+ggsave(plot = pct_plots, filename = "results/plot_w1_net.png",
+       height = 11, width = 16)
